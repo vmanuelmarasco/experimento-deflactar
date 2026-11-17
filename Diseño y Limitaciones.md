@@ -133,6 +133,51 @@ señal y no la reemplaza por una mejor. Es coherente con que los dos brazos
 deflactados pierdan y con que el que más uniformiza sea también el que más
 achica la varianza: se está quitando información, no agregándola.
 
+**Un brazo adicional para testear esa interpretación.** Se repitió el brazo de
+IPC único agregando `foto_mes` como feature explícita, para devolverle al modelo
+la referencia temporal que la deflación le había quitado. Los hiperparámetros se
+volvieron a optimizar, porque es otro conjunto de features. Si la conjetura
+fuera correcta, la ganancia debería acercarse a la del nominal.
+
+| Semilla | IPC único | IPC + mes |
+|---|---|---|
+| 100129 | $286,2M | $287,1M |
+| 100183 | $284,7M | $286,7M |
+| 100151 | $287,8M | $289,8M |
+| 500041 | $286,9M | $287,8M |
+| 900007 | $286,4M | $286,6M |
+| **Media** | **$286,4M** | **$287,6M** |
+
+Agregar el mes mejora en las cinco semillas, $1,18M (+0,41%). La dirección es la
+que predice la conjetura, sin excepciones. Pero la magnitud recupera solo un
+tercio de los $3,45M que el brazo había perdido contra el nominal, y queda
+dentro de la banda de ruido. **Respaldo parcial:** la referencia temporal
+explica parte del efecto, no todo. El desvío, además, se mantiene en $1,33M, de
+modo que la estabilidad que trae deflactar es independiente de la cuestión
+temporal.
+
+**Objetivo específico 1: el índice del mes anterior.** En producción, el índice
+del mes que se está scoreando todavía no está publicado. Se repitió el brazo de
+IPC único deflactando cada mes con el índice del mes previo (y diciembre de
+2018, 184,2552, para enero de 2019), reusando sin cambios los hiperparámetros
+del brazo 3: si se volviera a optimizar, no se sabría si la diferencia viene
+del índice o de la búsqueda.
+
+| Semilla | Índice del mes | Índice del mes anterior |
+|---|---|---|
+| 100129 | $286,2M | $287,3M |
+| 100183 | $284,7M | $286,5M |
+| 100151 | $287,8M | $286,6M |
+| 500041 | $286,9M | $287,9M |
+| 900007 | $286,4M | $288,6M |
+| **Media** | **$286,4M** | **$287,4M** |
+
+La diferencia es de $973.500 (+0,34%), muy por debajo de la banda de ruido
+($4,65M). El rezago gana en cuatro de las cinco semillas, pero por una magnitud
+despreciable: son equivalentes. **El objetivo queda cumplido:** el resultado no
+depende de información que no estaría disponible al momento de scorear, de modo
+que el pipeline es aplicable en producción tal como está.
+
 ---
 
 ## Limitaciones de lo que se probó
@@ -186,20 +231,21 @@ en ese mes, y los árboles parten sobre ese orden. La deflación puede incidir
 deltas comparan meses distintos. Esto acota de entrada el tamaño del efecto que
 cabe esperar.
 
-**El uso del índice del mes corriente.** Para medir en 201910 se usó el IPC de
-201910, que en una aplicación real todavía no estaría publicado al momento de
-scorear. La verificación de que usar el índice del mes anterior no altera los
-resultados quedó pendiente y es el paso inmediato antes de llevar esto al
-pipeline productivo.
+**El chequeo del índice rezagado se hizo sobre un solo brazo.** La equivalencia
+entre usar el índice del mes y el del mes anterior se verificó en el brazo de
+IPC único y con los hiperparámetros de ese brazo. Es razonable esperar que valga
+también para el brazo por grupos, donde conviven siete series, pero no se midió.
 
 **La tasa de plazo fijo como deflactor de saldos es la decisión más débil.** Un
 saldo en cuenta corriente no devenga esa tasa; un plazo fijo sí. Agruparlos bajo
 el mismo índice es una simplificación, y convendría reportar también la versión
 con IPC para esas ocho columnas.
 
-**La interpretación del resultado negativo no se testeó.** Que el nivel nominal
-funcione como marcador del mes es la explicación más razonable de por qué
-deflactar pierde, pero es una conjetura. Contrastarla pide un brazo adicional:
-deflactar y agregar al mismo tiempo una variable explícita de tiempo, o al
-revés, dejar los montos nominales y quitarle al modelo toda referencia al mes.
-Mientras eso no se corra, lo que está medido es el efecto, no su causa. Por eso es testeable con un brazo más: deflactado + foto_mes como feature. Si al devolverle la referencia temporal la ganancia vuelve al nivel del nominal, la explicación queda confirmada. Si no vuelve, era otra cosa y tenés que buscar.
+**La interpretación quedó respaldada solo a medias.** El brazo con `foto_mes`
+confirma la dirección en las cinco semillas, pero recupera apenas un tercio de
+lo que la deflación había costado. Los otros dos tercios no tienen explicación
+medida. Faltan dos cosas para cerrar el argumento: el brazo simétrico, con
+montos nominales y sin ninguna referencia al mes, y una versión con `foto_mes`
+tratada como categórica. Esto último importa porque el modelo final entrena en
+201903–201908 y predice 201910, de modo que el mes de test queda fuera del rango
+visto y el árbol termina tratando a octubre como si fuera agosto.
