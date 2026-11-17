@@ -167,3 +167,8 @@ quedan sin explicación.
 
 Los tres primeros notebooks (2, 3 y 4) son los que responden la hipótesis. El 5
 y el 6 son chequeos de apoyo.
+
+**El mes de referencia es irrelevante.** Cambiar la base del deflactor multiplica
+todo el dataset por una constante, y los árboles son invariantes a eso. Verificado:
+el cociente entre la base 201901 y la 201906 es constante hasta el decimoquinto
+dígito. No hace falta correr el pipeline con varias bases.

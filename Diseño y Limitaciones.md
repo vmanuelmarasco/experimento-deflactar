@@ -156,6 +156,21 @@ explica parte del efecto, no todo. El desvío, además, se mantiene en $1,33M, d
 modo que la estabilidad que trae deflactar es independiente de la cuestión
 temporal.
 
+**El mes de referencia no altera los resultados, y se demuestra sin correr nada.**
+En la devolución del baseline se sugirió repetir el pipeline con distintos meses
+base, por si enero de 2019 fuera un mes atípico. No hace falta: la fórmula es
+`monto ÷ índice[mes] × índice[base]`, y `índice[base]` es una constante igual
+para todas las filas de todos los meses. Cambiar la base multiplica el dataset
+entero por un escalar, y los árboles, que parten sobre umbrales, son invariantes
+a un reescalado uniforme: mismos cortes, misma ganancia.
+
+La verificación numérica lo confirma. El cociente entre la versión con base
+201901 y la de base 201906, sobre las 73 columnas monetarias y los doce meses,
+va de 1,1894777757092052 a 1,1894777757092057, contra el 1,1894777757092054
+esperado. La dispersión aparece en el decimosexto dígito: es ruido de punto
+flotante, no una diferencia. Elegir la base es elegir la unidad en que se miran
+los montos, como pasar de metros a centímetros.
+
 **Objetivo específico 1: el índice del mes anterior.** En producción, el índice
 del mes que se está scoreando todavía no está publicado. Se repitió el brazo de
 IPC único deflactando cada mes con el índice del mes previo (y diciembre de
