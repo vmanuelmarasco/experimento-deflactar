@@ -75,6 +75,9 @@ En `~/buckets/b1/`, que es lo único que sobrevive si se borra la VM:
 
 - `baseline_5semillas.csv`, `ipc_5semillas.csv`, `grupos_5semillas.csv`:
   una fila por semilla con ganancia y envíos.
+- `baseline_20semillas.csv`, `ipc_20semillas.csv`, `grupos_20semillas.csv`:
+  lo mismo con las 15 semillas extra agregadas. Son los que usa la comparación
+  final.
 - `optuna_baseline.db`, `optuna_ipc.db`, `optuna_grupos.db`: los estudios
   completos de Optuna, con todos los trials.
 
@@ -111,36 +114,51 @@ otros dos: es deliberado y hay que declararlo al comparar.
 
 ## Ruido de semilla
 
-Las 5 corridas del baseline dieron una media de $289,9M con un desvío de $4,6M
-(rango 285,0 a 296,3). Esa es la banda del azar: una diferencia menor a ~5M
-entre modelos no se distingue del ruido.
+Los tres brazos se corrieron con **20 semillas**, no con 5. Las primeras cinco
+(100129, 100183, 100151, 500041, 900007) son las de la primera vuelta; las otras
+quince se agregaron después, usando los mismos hiperparámetros ya optimizados,
+así que sumarlas no costó ninguna optimización nueva.
 
-Para el test de Wilcoxon pareado hacen falta al menos 6 pares, así que con 5
-semillas la función avisa y no lo calcula. Conviene repetir con 20 o más antes
-de afirmar que un modelo le gana a otro.
+Veinte pares alcanzan para el test de Wilcoxon pareado, que con cinco no se
+podía calcular: con n=5 el p mínimo alcanzable de dos colas es 0,0625, de modo
+que ningún resultado podía dar significativo por más fuerte que fuera.
+
+Con 20 semillas la banda de ruido del baseline es un desvío de $3,41M alrededor
+de una media de $290,6M. Con 5 daba $4,65M alrededor de $289,9M: la media casi
+no se movió, pero la incertidumbre sobre ella se redujo a la mitad.
 
 ---
 
 ## Resultados
 
-Los tres brazos corrieron completos con las mismas cinco semillas.
+Los tres brazos corrieron completos con las mismas 20 semillas.
 
 | Brazo | Ganancia media | Desvío | Rango de envíos | vs nominal |
 |---|---|---|---|---|
-| nominal (control) | $289,9M | $4,65M | 3.075 – 4.945 | — |
-| IPC único | $286,4M | $1,14M | 3.831 – 5.569 | −$3,45M (−1,19%) |
-| por grupos | $284,9M | $2,14M | 3.982 – 5.626 | −$4,98M (−1,72%) |
+| nominal (control) | $290,57M | $3,41M | 3.075 – 5.625 | — |
+| IPC único | $287,32M | $2,09M | 3.831 – 5.834 | −$3,25M (−1,12%) |
+| por grupos | $284,86M | $1,89M | 2.896 – 6.285 | −$5,71M (−1,97%) |
 
-**La hipótesis no se confirma.** Deflactar no mejoró la ganancia, y hacerlo por
-grupos tampoco mejoró sobre el IPC único: el orden quedó al revés del esperado.
-Por el criterio fijado de antemano, el nominal le gana al brazo por grupos
-(diferencia por encima de la banda de ruido y 4 de 5 semillas), mientras que
-contra el IPC único es empate técnico: gana en las 5 pero por menos que el ruido.
+Wilcoxon pareado sobre las 20 semillas:
 
-**Lo inesperado: deflactar estabiliza.** El desvío entre semillas cae de $4,65M
-a $2,14M y $1,14M. Los brazos deflactados ganan menos pero son mucho más
-consistentes, y mandan más clientes. No era lo que se buscaba medir y con cinco
-semillas no alcanza para afirmarlo, pero es la observación más sugerente.
+| Comparación | Diferencia | Gana | p |
+|---|---|---|---|
+| nominal vs IPC único | $3,25M a favor del nominal | 19 de 20 | 0,0001 |
+| nominal vs por grupos | $5,71M a favor del nominal | 19 de 20 | <0,0001 |
+| IPC único vs por grupos | $2,46M a favor del IPC | 15 de 20 | 0,0012 |
+
+**La hipótesis queda refutada.** No es que deflactar "no mejore": deflactar
+empeora, y hacerlo por grupos empeora todavía más. El orden quedó exactamente
+al revés del esperado y las tres diferencias son estadísticamente significativas.
+
+Con cinco semillas dos de esas tres comparaciones eran empate técnico. Con
+veinte, el criterio fijado de antemano —superar la banda de ruido y ganar en la
+mayoría de las semillas— se cumple en las tres, y además el p lo respalda.
+
+**Lo inesperado: deflactar estabiliza.** El desvío entre semillas cae de $3,41M
+a $2,09M y $1,89M. Los brazos deflactados ganan menos pero son más consistentes,
+y mandan más clientes. No era lo que se buscaba medir, pero es la observación
+más sugerente y se sostuvo al cuadruplicar las semillas.
 
 **El índice rezagado no cambia nada.** Repitiendo el brazo de IPC único con el
 índice del mes anterior —el único publicado al momento de scorear— y los mismos
@@ -153,17 +171,20 @@ semillas. La dirección confirma que parte de lo que el modelo pierde al
 deflactar es la referencia temporal, pero solo un tercio: los otros dos tercios
 quedan sin explicación.
 
+Los brazos 5 y 6 se corrieron con 5 semillas, no con 20: son chequeos de apoyo,
+no parte de la comparación principal.
+
 ---
 
 ## Los cinco brazos
 
-| Brazo | Notebook | Media | Desvío | Envíos |
+| Brazo | Notebook | Media | Desvío | Semillas |
 |---|---|---|---|---|
-| nominal | `2_baseline` | $289,9M | $4,65M | 3.075 – 4.945 |
-| IPC + mes | `5_deflactado_ipc_con_fotomes` | $287,6M | $1,33M | 3.981 – 4.614 |
-| rezagado | `6_indice_rezagado` | $287,4M | $0,88M | 4.177 – 5.331 |
-| IPC único | `3_deflactado_ipc` | $286,4M | $1,14M | 3.831 – 5.569 |
-| por grupos | `4_grupos` | $284,9M | $2,14M | 3.982 – 5.626 |
+| nominal | `2_baseline` | $290,57M | $3,41M | 20 |
+| IPC único | `3_deflactado_ipc` | $287,32M | $2,09M | 20 |
+| por grupos | `4_grupos` | $284,86M | $1,89M | 20 |
+| IPC + mes | `5_deflactado_ipc_con_fotomes` | $287,6M | $1,33M | 5 |
+| rezagado | `6_indice_rezagado` | $287,4M | $0,88M | 5 |
 
 Los tres primeros notebooks (2, 3 y 4) son los que responden la hipótesis. El 5
 y el 6 son chequeos de apoyo.

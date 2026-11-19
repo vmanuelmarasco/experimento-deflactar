@@ -63,11 +63,17 @@ rondas que la búsqueda encontró, se reentrena sobre 201903–201908 y se predi
 ganancia; se reporta el máximo de esa curva (la meseta) y la cantidad de envíos
 en la que se alcanza.
 
-**Repeticiones.** Cada brazo se corre con las mismas cinco semillas (100129,
-100183, 100151, 500041 y 900007). La comparación es pareada: la misma semilla en
-dos brazos comparte el azar del bagging, de modo que la diferencia que queda es
-atribuible a la deflación. Sobre esas diferencias se aplica un test de Wilcoxon
-pareado.
+**Repeticiones.** Cada brazo se corre con las mismas veinte semillas. Las
+primeras cinco (100129, 100183, 100151, 500041 y 900007) son las de la primera
+vuelta; las otras quince (100193, 100207, 100213, 100237, 100267, 100271,
+100279, 100291, 100297, 100313, 500069, 500083, 500107, 500111 y 900017) se
+agregaron en una segunda vuelta, reutilizando los hiperparámetros ya
+optimizados, de modo que ampliar la muestra no implicó rehacer ninguna búsqueda.
+La comparación es pareada: la misma semilla en dos brazos comparte el azar del
+bagging, de modo que la diferencia que queda es atribuible a la deflación. Sobre
+esas diferencias se aplica un test de Wilcoxon pareado, que con veinte pares sí
+es interpretable: con cinco, el p mínimo alcanzable de dos colas es 0,0625, así
+que ningún resultado podía resultar significativo por fuerte que fuera el efecto.
 
 **Criterio de decisión, fijado antes de mirar los resultados.** La métrica
 primaria es la ganancia en 201910; el AUC en validación es secundario y sirve
@@ -78,52 +84,67 @@ diferencia de medias excede ese desvío y además gana en al menos cuatro de las
 cinco semillas. Una diferencia menor se declarará empate, aunque el signo
 favorezca a la hipótesis.
 
+Al ampliar a veinte semillas el criterio se mantuvo con la misma forma, solo
+recalculado sobre la muestra nueva: la banda de ruido pasó a ser el desvío del
+nominal con veinte corridas ($3,41 millones) y la mayoría exigida pasó de cuatro
+de cinco a la mayoría de veinte. No se cambió la regla después de ver los
+números; se cambió el tamaño de la muestra sobre la que se aplica, y se agregó
+el p del Wilcoxon, que con cinco semillas no se podía calcular.
+
 ---
 
 ## Resultados
 
-Los tres brazos corrieron completos con las mismas cinco semillas. La métrica
+Los tres brazos corrieron completos con las mismas veinte semillas. La métrica
 es el máximo de la curva de ganancia acumulada en 201910.
 
 | Brazo | Ganancia media | Desvío | Rango de envíos | Diferencia vs nominal |
 |---|---|---|---|---|
-| Nominal (control) | $289,9M | $4,65M | 3.075 – 4.945 | — |
-| IPC único | $286,4M | $1,14M | 3.831 – 5.569 | −$3,45M (−1,19%) |
-| Por grupos | $284,9M | $2,14M | 3.982 – 5.626 | −$4,98M (−1,72%) |
+| Nominal (control) | $290,57M | $3,41M | 3.075 – 5.625 | — |
+| IPC único | $287,32M | $2,09M | 3.831 – 5.834 | −$3,25M (−1,12%) |
+| Por grupos | $284,86M | $1,89M | 2.896 – 6.285 | −$5,71M (−1,97%) |
 
-Semilla por semilla:
+Las veinte ganancias de cada brazo están en `baseline_20semillas.csv`,
+`ipc_20semillas.csv` y `grupos_20semillas.csv`.
 
-| Semilla | Nominal | IPC único | Por grupos |
+Comparaciones pareadas:
+
+| Comparación | Diferencia de medias | Semillas a favor | Wilcoxon |
 |---|---|---|---|
-| 100129 | $296,3M | $286,2M | $282,9M |
-| 100183 | $285,0M | $284,7M | $287,9M |
-| 100151 | $288,0M | $287,8M | $283,1M |
-| 500041 | $287,0M | $286,9M | $286,3M |
-| 900007 | $293,0M | $286,4M | $284,3M |
+| Nominal vs IPC único | $3,25M (1,12%) | 19 de 20 | p = 0,0001 |
+| Nominal vs por grupos | $5,71M (1,97%) | 19 de 20 | p < 0,0001 |
+| IPC único vs por grupos | $2,46M (0,86%) | 15 de 20 | p = 0,0012 |
 
-**La hipótesis no se confirma.** Deflactar no mejoró la ganancia, y deflactar
-con un índice por grupo tampoco mejoró sobre el IPC único. El orden quedó
-exactamente al revés del esperado.
+**La hipótesis queda refutada.** No solo no se confirma: el resultado es
+significativo en la dirección contraria. Deflactar empeora la ganancia, y
+deflactar con un índice por grupo empeora más que hacerlo con un IPC único. El
+orden quedó exactamente al revés del esperado en las dos comparaciones que la
+hipótesis predecía.
 
 Aplicando el criterio fijado antes de mirar los resultados:
 
-- **Nominal contra por grupos.** La diferencia de medias ($4,98M) supera la
-  banda de ruido ($4,65M) y el nominal gana en cuatro de las cinco semillas.
-  Se declara que el nominal es mejor.
-- **Nominal contra IPC único.** El nominal gana en las cinco semillas, pero la
-  diferencia ($3,45M) queda por debajo de la banda. Por el criterio
-  preestablecido es un empate, aunque el signo sea sistemático.
-- **IPC único contra por grupos.** $1,53M de diferencia, bien dentro del ruido.
-  Empate.
+- **Nominal contra por grupos.** $5,71M de diferencia, por encima de la banda de
+  ruido, y el nominal gana en diecinueve de veinte semillas. El nominal es mejor.
+- **Nominal contra IPC único.** $3,25M de diferencia, también por encima de la
+  banda, y gana en diecinueve de veinte. El nominal es mejor. Con cinco semillas
+  esta comparación había quedado en empate técnico; al ampliar la muestra la
+  banda de ruido se angostó de $4,65M a $3,41M y la diferencia la superó.
+- **IPC único contra por grupos.** $2,46M de diferencia y quince de veinte
+  semillas a favor del IPC único. Es la comparación más ajustada de las tres,
+  pero el p la respalda.
+
+Vale registrar que la primera vuelta, con cinco semillas, habría dejado dos de
+estas tres comparaciones en empate. La conclusión no cambió de signo al
+cuadruplicar la muestra —el nominal ganaba en las tres desde el principio—, pero
+recién con veinte semillas hay con qué afirmarlo.
 
 **Hallazgo lateral: deflactar reduce la varianza.** El desvío entre semillas cae
-de $4,65M en el nominal a $2,14M en el brazo por grupos y $1,14M con IPC único.
-Los brazos deflactados ganan menos pero son notablemente más estables, y además
-corren el óptimo de envíos hacia arriba (el nominal corta entre 3.075 y 4.945
-clientes; los deflactados, entre 3.831 y 5.626). No era lo que el experimento
-se propuso medir y con cinco semillas no alcanza para afirmarlo, pero es la
-observación más sugerente de la corrida y la candidata más clara a una segunda
-vuelta.
+de $3,41M en el nominal a $2,09M con IPC único y $1,89M por grupos. Los brazos
+deflactados ganan menos pero son notablemente más estables, y además corren el
+óptimo de envíos hacia arriba. El patrón se sostuvo al pasar de cinco a veinte
+semillas, que es lo que le da algo de peso: no era un artefacto de la muestra
+chica. Sigue sin ser lo que el experimento se propuso medir, y queda como la
+candidata más clara a una segunda vuelta.
 
 **Interpretación.** La explicación más plausible de por qué deflactar pierde es
 que el nivel nominal le sirve al modelo como marcador implícito del mes: dentro
@@ -203,15 +224,21 @@ curva de ganancia es inestable: entre las cinco semillas del baseline, el
 difieren en menos del 4%. Medir en un único mes hace que parte de lo que
 observemos sea la particularidad de ese mes.
 
-**Cinco semillas.** El test de Wilcoxon necesita al menos seis pares para dar un
-p interpretable, así que con cinco solo podemos mirar medias, desvíos y en
-cuántas semillas gana cada brazo. Para afirmar significancia habría que repetir
-con veinte o más, que es lo que recomendaron los tutores.
+**Veinte semillas en los brazos principales, cinco en los auxiliares.** Los
+tres brazos de la comparación central se corrieron con veinte semillas y el
+Wilcoxon es interpretable. Los brazos 5 y 6 —`foto_mes` como feature e índice
+rezagado— se quedaron en cinco, así que sobre ellos solo puede decirse la
+dirección y el tamaño aproximado, no la significancia. Las conclusiones que
+dependen de esos dos brazos son más débiles que las del cuerpo principal.
 
-**Un solo régimen inflacionario.** 2019 cerró con el IPC multiplicándose por 1,5
-en doce meses. No sabemos si el efecto de deflactar se mantiene en un año de
-inflación baja, donde la corrección sería pequeña, ni en uno de inflación mucho
-más alta. La conclusión vale para este período.
+**Un solo año, y de inflación muy alta.** Todo el experimento vive dentro de
+2019, un año que cerró con el IPC multiplicándose por 1,5 en doce meses. No se
+probaron otros años: no sabemos si deflactar sigue perdiendo en un período de
+inflación baja, donde la corrección sería casi nula y por lo tanto también lo
+sería el daño, ni en uno de inflación mucho más alta, donde podría volverse
+necesaria. La conclusión vale para este año y este nivel de inflación. (Esto no
+es una limitación sobre la cantidad de índices usados: dentro de 2019 se usó el
+valor del IPC mes a mes, no un único valor anual.)
 
 **Índices nacionales aplicados a clientes individuales.** El IPC mide una
 canasta promedio de hogares del país; el RIPTE, el salario promedio del sistema
